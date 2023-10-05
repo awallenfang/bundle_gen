@@ -10,18 +10,21 @@ class Fiber():
 def scene_dict_from_fibers(fibers: list[Fiber]) -> dict:
     scene_dict = {"type": "scene"}
     for (n, fiber) in enumerate(fibers):
-        start_x = fiber.pos_x# + 100. * fiber.direction[0]
-        start_y = fiber.pos_y# + 100. * fiber.direction[1]
-        end_x = fiber.pos_x# - 100. * fiber.direction[0]
-        end_y = fiber.pos_y# - 100. * fiber.direction[1]
+        start_x = fiber.pos_x + 1000. * fiber.direction[0]
+        start_y = fiber.pos_y + 1000. * fiber.direction[1]
+        end_x = fiber.pos_x - 1000. * fiber.direction[0]
+        end_y = fiber.pos_y - 1000. * fiber.direction[1]
         
         fiber_dict = {"type": "cylinder",
         "radius": fiber.radius,
-        "p0": [start_x, start_y, -100.],
-        "p1": [end_x, end_y, 100.]}
+        "p0": [start_x, start_y, -1000.],
+        "p1": [end_x, end_y, 1000.]}
 
         scene_dict["fiber_" + str(n)] = fiber_dict
     return scene_dict
+
+
+
 
 def preview_render_dict_from_fibers(fibers: list[Fiber]) -> dict:
     scene_dict = {"type": "scene",
