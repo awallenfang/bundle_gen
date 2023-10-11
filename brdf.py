@@ -22,7 +22,6 @@ def point_outside_fiber_from_ray(fiber: Fiber, pos: mi.Point3f, dir: mi.Vector3f
 
 class TabulatedBCRDF():
     def __init__(self, files: list[str], lambda_min=400, lamda_max=700):
-        # ?
         self.theta_range = 450
         self.phi_range = 880
         
