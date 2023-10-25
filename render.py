@@ -1,18 +1,24 @@
 import mitsuba as mi
 import drjit as dr
-import pprint
 import numpy as np
 
 import matplotlib.pyplot as plt
 
 import fiber
-from brdf import brdf
+from brdf import TabulatedBCRDF
 
 # Mitsuba prbvolpath
 
+# interface Shape add method (shape.h)
+# Look for similar method (eval_parameterization)
+# edit cylinder
+# add to bind_shape_generic in shape_v.cpp
+
+# Make a method that computes the surface point in the direction
+
 TEST = False
 
-RAY_AMT = 10000
+RAY_AMT = 10
 
 mi.set_variant('llvm_ad_rgb')
 
@@ -47,22 +53,28 @@ if not TEST:
     max_bounce = mi.UInt32(20)
     active: mi.Mask = mi.Mask(True)
 
+    brdf = TabulatedBCRDF(["fiber_0/fiber_0_lambda" + str(i) + "_TM_depth6.binary" for i in range(24)])
+
     loop = mi.Loop("Tracing", lambda: (active, directions, origins, bounce_n, max_bounce))
 
-    while loop(active):
-        ray = mi.Ray3f(origins, directions)
-        intersection: mi.SurfaceInteraction3f = scene.ray_intersect(ray, active=active)
-        bounding_box_hit = mi.Mask(intersection.t > 100000)
+    # while loop(active):
+    #     # TODO: Somehow find which fiber it is
+    #     ray = mi.Ray3f(origins, directions)
+    #     intersection: mi.SurfaceInteraction3f = scene.ray_intersect(ray, active=active)
+    #     bounding_box_hit = mi.Mask(intersection.t > 100000)
 
-        rand = sampler.next_1d(active)
-        new_ori, new_dir, new_mag = brdf(intersection, rand, active)
+    #     output: mi.Shape = intersection.shape
+    #     fiber_radius: mi.Float = output.eval_attribute_1("radius", intersection, active)
+    #     fiber_dir: mi.Vector3f = output.eval_attribute("direction", intersection, active)
+    #     dr.printf_async("%f", fiber_radius)
+    #     new_ori, new_dir, new_mag = brdf.brdf(intersection, active, fiber_dir, fiber_radius,  sampler, 600.)
 
-        origins[active] = new_ori
-        directions[active] = new_dir
+    #     origins[active] = new_ori
+    #     directions[active] = new_dir
         
-        bounce_n += 1
-        active &= bounce_n < max_bounce
-        active &= ~bounding_box_hit
+    #     bounce_n += 1
+    #     active &= bounce_n < max_bounce
+    #     active &= ~bounding_box_hit
 
     print(directions)
     print(origins)

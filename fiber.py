@@ -1,14 +1,22 @@
+import math
+
 import mitsuba as mi
 
 class Fiber():
     def __init__(self, pos_x: float, pos_y: float, radius: float, direction: list[float]):
+        assert(len(direction) == 3)
+        
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.radius = radius
         self.direction = direction
+        self.mitsuba_direction = mi.Vector3f(direction)
 
 def scene_dict_from_fibers(fibers: list[Fiber]) -> dict:
     scene_dict = {"type": "scene"}
+    
+    id_map = {}
+
     for (n, fiber) in enumerate(fibers):
         start_x = fiber.pos_x + 1000. * fiber.direction[0]
         start_y = fiber.pos_y + 1000. * fiber.direction[1]
@@ -18,10 +26,27 @@ def scene_dict_from_fibers(fibers: list[Fiber]) -> dict:
         fiber_dict = {"type": "cylinder",
         "radius": fiber.radius,
         "p0": [start_x, start_y, -1000.],
-        "p1": [end_x, end_y, 1000.]}
+        "p1": [end_x, end_y, 1000.],
+        "scale": 10.}
 
+        # fiber_object = mi.load_dict(fiber_dict)
+        # id_map[mi.ShapePtr(fiber_object)] = fiber_object
+        # scene_dict["fiber_" + str(n)] = fiber_dict
         scene_dict["fiber_" + str(n)] = fiber_dict
+        
     return scene_dict
+    # return (scene_dict, id_map)
+
+def min_distance_between_fibers(fibers: list[Fiber]) -> float:
+    min_dist = 99999999999999999999999999999999999999999.
+
+    for fiber in fibers:
+        for other in fibers:
+            dist = math.sqrt((fiber.pos_x - other.pos_x) ** 2 + (fiber.pos_y - other.pos_y) ** 2)
+
+            if dist < min_dist:
+                min_dist = dist
+    return min_dist
 
 
 
