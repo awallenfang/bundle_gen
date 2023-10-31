@@ -59,32 +59,8 @@ class TabulatedBCRDF():
             (phi / 360.)
             )
         
-        if interpolator == "linear":
-            return self.tables_texture.eval(coord)[0]
-        
+        return self.tables_texture.eval(coord)[0]
 
-            # Read 8 surrouding values
-            # Interpolate between them
-            # That way an actual value can be returned
-            # interp_table_lower = self.tables_tensor[mi.Int(dr.floor(coord[0]))]
-            # interp_table_higher = self.tables_tensor[mi.Int(dr.ceil(coord[0]))]
-
-            # t = coord[0] - dr.floor(coord[0])
-            # interp_layer = dr.lerp(interp_table_lower, interp_table_higher, t)
-
-            # theta_t = coord[1] - dr.floor(coord[1])
-
-            # interp_col_low = interp_layer[mi.Int(dr.floor(coord[1]))]
-            # interp_col_high = interp_layer[mi.Int(dr.ceil(coord[1]))]
-
-            # interp_col = dr.lerp(interp_col_low, interp_col_high, theta_t)
-            # interp_low = interp_col[mi.Int(dr.floor(coord[2]))]
-            # interp_high = interp_col[mi.Int(dr.ceil(coord[2]))]
-            # phi_t = coord[2] - dr.floor(coord[2])
-
-            # interp = dr.lerp(interp_low, interp_high, phi_t)
-
-            # return interp
 
     def brdf(self, intersection: mi.SurfaceInteraction3f, active: mi.Mask, fiber_dir: mi.Vector3f, fiber_radius: mi.Float, sampler: mi.Sampler, wavelength: float) -> Tuple[mi.Vector3f, mi.Point3f, mi.Float]:
         #####################
@@ -95,6 +71,7 @@ class TabulatedBCRDF():
         rand_1 = sampler.next_1d()
         rand_2 = sampler.next_1d()
         rand_3 = sampler.next_1d()
+        rand_4 = sampler.next_1d()
         
         direction = mi.Vector3f(rand_1, rand_2, rand_3)
 
@@ -107,11 +84,12 @@ class TabulatedBCRDF():
 
         magnitude = self.interpolate_tables(wavelength, out_theta, out_phi, "linear")
         
+        # position = intersection.shape.get_out_pos(intersection, 0.0001, direction)
         position = point_outside_fiber_from_ray(fiber_radius, fiber_dir, intersection.p, direction)
 
         # Shift the position along the side vector of the fiber
         side = dr.cross(direction, fiber_dir)
-        shift_amt = rand_1 - 0.5
+        shift_amt = rand_4 - 0.5
         position += shift_amt * fiber_radius * side
 
         return (position, direction, magnitude)
@@ -126,6 +104,6 @@ class TabulatedBCRDF():
         plt.show()
 
 
-test = TabulatedBCRDF(["fiber_0/fiber_0_lambda" + str(i) + "_TM_depth6.binary" for i in range(24)])
-test.show_layers()
-print(test.interpolate_tables(500, 90, 180))
+# test = TabulatedBCRDF(["fiber_0/fiber_0_lambda" + str(i) + "_TM_depth6.binary" for i in range(24)])
+# test.show_layers()
+# print(test.interpolate_tables(500, 90, 180))

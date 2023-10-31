@@ -26,12 +26,9 @@ def scene_dict_from_fibers(fibers: list[Fiber]) -> dict:
         fiber_dict = {"type": "cylinder",
         "radius": fiber.radius,
         "p0": [start_x, start_y, -1000.],
-        "p1": [end_x, end_y, 1000.],
-        "scale": 10.}
+        "p1": [end_x, end_y, 1000.],}
 
-        # fiber_object = mi.load_dict(fiber_dict)
-        # id_map[mi.ShapePtr(fiber_object)] = fiber_object
-        # scene_dict["fiber_" + str(n)] = fiber_dict
+
         scene_dict["fiber_" + str(n)] = fiber_dict
         
     return scene_dict
