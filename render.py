@@ -23,7 +23,7 @@ def cartesian_to_polar(x,y,z):
 
 TEST = False
 
-RAY_AMT = 200000
+RAY_AMT = 10
 OUT_PHI = 100
 OUT_THETA = 100
 
@@ -62,7 +62,7 @@ if not TEST:
 
     brdf = TabulatedBCRDF(["fiber_0/fiber_0_lambda" + str(i) + "_TM_depth6.binary" for i in range(24)])
 
-    loop = mi.Loop("Tracing", lambda: (active, directions, origins, bounce_n, max_bounce))
+    loop = mi.Loop("Tracing", lambda: (active, directions, origins, magnitudes,  bounce_n, max_bounce))
 
     while loop(active):
         # TODO: Somehow find which fiber it is
@@ -95,21 +95,14 @@ if not TEST:
         # print(phi, theta)
         pos_x = int(np.floor((phi / (np.pi*2)) * OUT_PHI))
         pos_y = int(np.floor((theta / (np.pi)) * OUT_THETA))
-        # mag = dr.slice(magnitudes, i, float)
-        out_model[pos_y, pos_x] += 1
+        mag = dr.slice(magnitudes, i, float)
+        out_model[pos_y, pos_x] += mag
 
     fig, ax = plt.subplots(1)
     ax.set_xlabel("phi")
     ax.set_ylabel("theta")
     ax.imshow(out_model)
     plt.show()
-
-    
-    
-    # Go through each direction and origin
-    # Count it in a numpy array
-    # Normalize this to create the output model
-    # imshow it
 
 
 

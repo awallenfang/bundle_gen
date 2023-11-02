@@ -68,28 +68,33 @@ class TabulatedBCRDF():
         # TODO
         WRONG_FIBER_RADIUS = mi.Float(1.)
         
+        # Uniform sphere point
+
         rand_1 = sampler.next_1d()
         rand_2 = sampler.next_1d()
-        rand_3 = sampler.next_1d()
-        rand_4 = sampler.next_1d()
-        
-        direction = mi.Vector3f(rand_1, rand_2, rand_3)
 
-        out_theta, out_phi = cartesian_to_polar(direction)
+        rand_theta = 2 * dr.pi * rand_1
+        rand_phi = dr.acos(1 - 2 * rand_2)
+        rand_3 = sampler.next_1d()
+        
+        direction = mi.Vector3f(dr.sin(rand_phi) * dr.cos(rand_theta), 
+                                dr.sin(rand_phi) * dr.sin(rand_theta), 
+                                dr.cos(rand_phi))
+
         fiber_theta, fiber_phi = cartesian_to_polar(fiber_dir)
 
         # TODO: Is this correct?
-        out_theta -= fiber_theta
-        out_phi -= fiber_phi
+        rand_theta -= fiber_theta
+        rand_phi -= fiber_phi
 
-        magnitude = self.interpolate_tables(wavelength, out_theta, out_phi, "linear")
+        magnitude = self.interpolate_tables(wavelength, rand_theta, rand_phi, "linear")
         
         # position = intersection.shape.get_out_pos(intersection, 0.0001, direction)
         position = point_outside_fiber_from_ray(fiber_radius, fiber_dir, intersection.p, direction)
 
         # Shift the position along the side vector of the fiber
         side = dr.cross(direction, fiber_dir)
-        shift_amt = rand_4 - 0.5
+        shift_amt = rand_3 - 0.5
         position += shift_amt * fiber_radius * side
 
         return (position, direction, magnitude)
