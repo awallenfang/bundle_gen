@@ -1,7 +1,6 @@
 import mitsuba as mi
 import drjit as dr
 import numpy as np
-import math
 
 import matplotlib.pyplot as plt
 
@@ -9,21 +8,21 @@ import fiber
 from brdf import TabulatedBCRDF, cartesian_to_polar
 
 def cartesian_to_polar(x,y,z):
-    theta = np.arctan2(y,x)
-    phi = np.arccos(z / np.sqrt(x*x + y*y + z*z))
+    phi = np.arctan2(y,x)
+    theta = np.arccos(z / np.sqrt(x*x + y*y + z*z))
 
     return (theta, phi)
 
 
-# BSDFSample3 in bsdf.h
-# Add out point
-# Copy path.cpp and edit points where emitter and bsdf are sampled
-# Change pos in path.cpp
-# make base get_out_pos return si.p, not 0
+# length = r/ (sqrt(1 - dot(out, fiber_dir)^2))
+# wenn dot nahe 1 wegwerfen
+
+# Check code where exactly it's written if it's even uniform
+# Get the test cases to work correctly
 
 TEST = False
 
-RAY_AMT = 10
+RAY_AMT = 100000
 OUT_PHI = 100
 OUT_THETA = 100
 
@@ -31,33 +30,29 @@ mi.set_variant('llvm_ad_rgb')
 
 fibers = []
 fibers.append(fiber.Fiber(0., 0., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(11., 0., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(22., 0., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(33., 0., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(44., 0., 3., [0.,0.,1.]))
+# fibers.append(fiber.Fiber(10., 0., 3., [0.,0.,1.]))
+# fibers.append(fiber.Fiber(10., 10., 3., [0.,0.,1.]))
+# fibers.append(fiber.Fiber(0., 10., 3., [0.,0.,1.]))
+# fibers.append(fiber.Fiber(10., 0., 3., [0.,0.,1.]))
+# fibers.append(fiber.Fiber(-10., -10., 3., [0.,0.,1.]))
+# fibers.append(fiber.Fiber(0., -10., 3., [0.,0.,1.]))
+# fibers.append(fiber.Fiber(-10., 0., 3., [0.,0.,1.]))
 
-def dummy(intersection, rand, active):
-    pos = intersection.p * rand
-    return (pos, intersection.to_world(intersection.wi))
-
-# Create BRDF from data
 
 # Check the interactions
 if not TEST:
     scene: mi.Scene = mi.load_dict(fiber.scene_dict_from_fibers(fibers))
 
-    dirs = mi.Vector3f(1,0,0)
-
-
     sampler: mi.Sampler = mi.load_dict({'type': 'independent'})
-    sampler.seed(213, RAY_AMT)    
+    # sampler.seed(int(time.time()), RAY_AMT)    
+    sampler.seed(231, RAY_AMT)    
 
     directions = mi.Vector3f(1,0,0)
-    origins = mi.Point3f(-10,0,0)
+    origins = mi.Point3f(-20,0,0)
     magnitudes = mi.Float(1.)
 
     bounce_n = mi.UInt32(0)
-    max_bounce = mi.UInt32(20)
+    max_bounce = mi.UInt32(200)
     active: mi.Mask = mi.Mask(True)
 
     brdf = TabulatedBCRDF(["fiber_0/fiber_0_lambda" + str(i) + "_TM_depth6.binary" for i in range(24)])
@@ -65,50 +60,82 @@ if not TEST:
     loop = mi.Loop("Tracing", lambda: (active, directions, origins, magnitudes,  bounce_n, max_bounce))
 
     while loop(active):
-        # TODO: Somehow find which fiber it is
         ray = mi.Ray3f(origins, directions)
         intersection: mi.SurfaceInteraction3f = scene.ray_intersect(ray, active=active)
-        bounding_box_hit = mi.Mask(intersection.t > 100000)
+
+        # Check if the ray is valid before any brdfs are run
+        t_too_big = mi.Mask(intersection.t > 999999999)
+        t_too_small = mi.Mask(intersection.t < 0)
+        active &= ~t_too_big
+        active &= ~t_too_small
+
+        # dr.printf_async("Ori: (%f,%f,%f)\n", origins.x, origins.y, origins.z)
+        # dr.printf_async("Dir: (%f,%f,%f)\n", directions.x, directions.y, directions.z)
+        # dr.printf_async("t: %f\n", intersection.t)
 
         output: mi.Shape = intersection.shape
-        fiber_radius: mi.Float = output.eval_attribute_1("radius", intersection, active)
-        fiber_dir: mi.Vector3f = output.eval_attribute("direction", intersection, active)
-        # dr.printf_async("%f", fiber_radius)
-        new_ori, new_dir, new_mag = brdf.brdf(intersection, active, fiber_dir, fiber_radius,  sampler, 600.)
+        new_ori, new_dir, new_mag = brdf.brdf(intersection, active, sampler, 414.)
 
         origins[active] = new_ori
         directions[active] = new_dir
-        magnitudes[active] = new_mag
-        
-        bounce_n += 1
+        magnitudes[active] *= new_mag
+        bounce_n[active] += 1
         active &= bounce_n < max_bounce
-        active &= ~bounding_box_hit
+        active &= magnitudes <= 0.000001
+    print(dr.max(bounce_n))
+    out_model = np.zeros((OUT_THETA, OUT_PHI))
 
-    # print(directions)
-    # print(origins)
+    n_dir = directions.numpy()
+    n_mag = magnitudes.numpy()
 
-    out_model = np.zeros((OUT_PHI, OUT_THETA))
+    phis = np.arctan2(n_dir[:,1], n_dir[:,0])
+    thetas = np.arccos(n_dir[:,2] / np.linalg.norm(n_dir, axis=1))
 
-    for i in range(0, RAY_AMT):
-        dir = dr.slice(directions, i, float)
-        phi, theta = cartesian_to_polar(dir[0], dir[1], dir[2])
-        # print(phi, theta)
-        pos_x = int(np.floor((phi / (np.pi*2)) * OUT_PHI))
-        pos_y = int(np.floor((theta / (np.pi)) * OUT_THETA))
-        mag = dr.slice(magnitudes, i, float)
-        out_model[pos_y, pos_x] += mag
+    phis[phis<0] += np.pi*2
+    phi_coords = np.floor((phis / (2*np.pi)) * OUT_PHI)
+    phi_coords = phi_coords.astype(int)
+    print(np.max(phi_coords))
 
-    fig, ax = plt.subplots(1)
-    ax.set_xlabel("phi")
-    ax.set_ylabel("theta")
-    ax.imshow(out_model)
+    theta_coords = np.floor((thetas / np.pi) * OUT_THETA)
+    theta_coords = theta_coords.astype(int)
+    # print(np.max(theta_coords))
+
+    coords = np.stack((theta_coords, phi_coords), axis=1)
+    # print(coords)
+    # print(n_mag)
+
+    
+    # print(f'Coords: {coords}\n')
+    # coords_sorter = np.argsort(coords[:,0], axis=0)
+    # print(f'Sorter: {coords_sorter}\n')
+    # sorted_coords = coords[coords_sorter]
+    # sorted_mags = n_mag[coords_sorter]
+    # print(f'Sorted Coords: {sorted_coords}\n')
+
+    
+    out_model[theta_coords, phi_coords] += n_mag
+    
+    plt.imshow(out_model)
     plt.show()
 
 
+    # print(thetas)
+    # # numpy scatter
+    # for i in range(0, RAY_AMT):
+    #     dir = n_dir[i]
+    #     theta, phi = cartesian_to_polar(dir[0], dir[1], dir[2])
+    #     pos_x = int(np.floor(((phi + 2*np.pi * (phi < 0)) / (np.pi*2)) * OUT_PHI))
+    #     pos_y = int(np.floor((theta / (np.pi)) * OUT_THETA))
+        
+    #     mag = n_mag[i]
 
+    #     out_model[pos_y, pos_x] += mag / np.sin(theta)
 
-
-
+    # fig, ax = plt.subplots(1)
+    # ax.set_xlabel("phi")
+    # ax.set_ylabel("theta")
+    # ax.imshow(out_model)
+    # plt.show()
 
 else:
     rend_scene = fiber.preview_render_dict_from_fibers(fibers)
