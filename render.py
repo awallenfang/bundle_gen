@@ -30,9 +30,7 @@ class Renderer():
         """
         print(f'Running render with following settings:\n\nSeed: {self.seed}\nInitial Origin: {self.origin}\nInitial Direction: {self.in_direction}\nMax Bounces: {self.bounces}\nAmount of rays: {self.ray_amt}\n')
         # Set up the sampler
-        sampler: mi.Sampler = mi.load_dict({'type': 'independent'})
-        sampler.set_sample_count(self.bounces * self.ray_amt)
-        sampler.set_samples_per_wavefront(self.bounces)    
+        sampler: mi.Sampler = mi.load_dict({'type': 'independent'})   
         sampler.seed(self.seed, self.ray_amt)
         
         up = mi.Vector3f(0.,0.,1.)
@@ -93,22 +91,21 @@ class Renderer():
             # Update the active mask
             active &= bounce_n < max_bounce
             # active &= magnitudes <= 0.00000000000000000000000001
-        print(f'\nResults:\n\nMaximum bounce depth: {dr.max(bounce_n)[0]}\nMaximum vertical offset: {dr.max(dr.abs(origins.z))[0]}\nBounce stopped because ray left the structure: {dr.sum(n_too_big)[0]}')
+        # Filter out ones that left the structure at the top and bottom
+        directions = directions[dr.abs(origins.z) < 100000000]   
+        magnitudes = magnitudes[dr.abs(origins.z) < 100000000]   
 
-        
-        out_model = dr.empty(mi.Float, self.out_size_phi * self.out_size_theta)
+        print(f'\nResults:\n\nMaximum bounce depth: {dr.max(bounce_n)[0]}\nMaximum vertical offset: {dr.max(dr.abs(origins.z))[0]}\nAmount of rays that left the scene at the top/bottom: {dr.sum(dr.abs(origins.z) > 100000000)}\nBounce stopped because ray left the structure: {dr.sum(n_too_big)[0]}')
+
+        out_model = dr.zeros(mi.Float, self.out_size_phi * self.out_size_theta)
 
         thetas, phis = mitsuba_cartesian_to_polar(directions)
 
         x_indices = mi.UInt(dr.floor((phis / (dr.pi * 2.)) * self.out_size_phi))
         y_indices = mi.UInt(dr.floor(((thetas + (dr.pi / 2.)) / dr.pi) * self.out_size_theta))
 
-        out_phi_size = mi.UInt32(self.out_size_phi)
-        indices = x_indices + out_phi_size * y_indices
+        indices = x_indices + self.out_size_phi * y_indices
 
         dr.scatter_reduce(dr.ReduceOp.Add, out_model, magnitudes, indices)
-        # Return the directions and magnitudes as numpy vectors
-        n_dir = directions.numpy()
-        n_mag = magnitudes.numpy()
 
         return (out_model.numpy())

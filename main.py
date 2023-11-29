@@ -11,8 +11,6 @@ from render import Renderer
 
 TEST = False
 
-RAY_AMT = 100000
-
 THETA_TABLE_SIZE=450
 PHI_TABLE_SIZE=880
 
@@ -27,6 +25,7 @@ fibers = []
 #     for y in range(0,105,5):
 #         fibers.append(fiber.Fiber(x,y,2,[0.,0.,1.]))
 fibers.append(fiber.Fiber(0,0,2,[0.,0.,1.]))
+fibers.append(fiber.Fiber(5,0,2,[0.,0.,1.]))
 
 radius, center_x, center_y = fiber.get_bounds(fibers)
 
@@ -62,10 +61,10 @@ if not TEST:
 
     in_pos = mi.Point3f(center_x, center_y, 0.) - dr.normalize(in_dir) * (radius * 1.1)
 
-    renderer = Renderer(fibers, brdf, samples=10000, bounces=100000, in_dir=in_dir, in_pos=in_pos, spread_amt=10)
+    renderer = Renderer(fibers, brdf, samples=10, bounces=1000000, in_dir=in_dir, in_pos=in_pos, spread_amt=10)
 
     out_model = renderer.render_structure()
-    print(out_model)
+
     plot_results(out_model)
 
 else:
