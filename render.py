@@ -1,162 +1,114 @@
-import mitsuba as mi
-import drjit as dr
-import numpy as np
 import time
 
-import matplotlib.pyplot as plt
+import mitsuba as mi
+import drjit as dr
 
-import fiber
-from brdf import TabulatedBCRDF, cartesian_to_polar
+from fiber import scene_dict_from_fibers, get_bounds
+from util import mitsuba_cartesian_to_polar
 
-def cartesian_to_polar(x,y,z):
-    phi = np.arctan2(y,x)
-    theta = np.arccos(z / np.sqrt(x*x + y*y + z*z))
+class Renderer():
+    def __init__(self, in_fibers, brdf, samples=100000, seed=-1, bounces=100, in_dir=mi.Vector3f(1.,0.,0.), in_pos=mi.Point3f(-20.,0.,0.), spread_amt=1, out_size_phi=100, out_size_theta=100):
+        if seed == -1:
+            self.seed = int(time.time())
+        else: 
+            self.seed = seed
 
-    return (theta, phi)
+        self.ray_amt = samples
+        self.scene = mi.load_dict(scene_dict_from_fibers(in_fibers))
+        self.radius, self.center_x, self.center_y = get_bounds(in_fibers)
+        self.brdf = brdf
+        self.bounces = bounces
+        self.origin = in_pos
+        self.in_direction = in_dir
+        self.spread_amt = spread_amt
+        self.out_size_phi = out_size_phi
+        self.out_size_theta = out_size_theta
 
-def plot_results(directions, magnitudes):
-    out_model = np.zeros((OUT_THETA, OUT_PHI))
+    def render_structure(self):
+        """
+        Render the fiber structure that was set up
+        """
+        print(f'Running render with following settings:\n\nSeed: {self.seed}\nInitial Origin: {self.origin}\nInitial Direction: {self.in_direction}\nMax Bounces: {self.bounces}\nAmount of rays: {self.ray_amt}\n')
+        # Set up the sampler
+        sampler: mi.Sampler = mi.load_dict({'type': 'independent'})
+        sampler.set_sample_count(self.bounces * self.ray_amt)
+        sampler.set_samples_per_wavefront(self.bounces)    
+        sampler.seed(self.seed, self.ray_amt)
+        
+        up = mi.Vector3f(0.,0.,1.)
 
-    phis = np.arctan2(directions[:,1], directions[:,0])
-    thetas = np.arccos(directions[:,2] / np.linalg.norm(directions, axis=1))
+        origins = self.origin
+        
+        if self.spread_amt > 1:
+            side = dr.normalize(dr.cross(self.in_direction, up)) * self.radius
+            rand_offset = sampler.next_1d()
+            origins = dr.lerp(origins + side, origins - side,  rand_offset)
+            
 
-    # phis[phis<0] += np.pi*2
-    # phi_coords = np.floor((phis / (2*np.pi)) * OUT_PHI)
-    # phi_coords = phi_coords.astype(int)
-    # print(np.max(phi_coords))
+        # Set up the running variables
+        directions = self.in_direction
+        magnitudes = mi.Float(1.)
 
-    # print(f'phi:0 -> {np.floor((0 / (2*np.pi)) * OUT_PHI)}')
-    # print(f'theta:0 -> {np.floor((0 / np.pi) * OUT_THETA)}')
+        bounce_n = mi.UInt32(0)
+        max_bounce = mi.UInt32(self.bounces)
+        active: mi.Mask = mi.Mask(True)
 
-    # theta_coords = np.floor((thetas / np.pi) * OUT_THETA)
-    # theta_coords = theta_coords.astype(int)
-    # # print(np.max(theta_coords))
+        n_too_big = mi.UInt32(0)
+        n_too_small = mi.UInt32(0)
 
-    # print(thetas)
-    for i in range(0, RAY_AMT):
-        dir = directions[i]
-        phi, theta = (phis[i], thetas[i])
-        pos_x = int(np.floor(((phi + 2*np.pi * (phi < 0)) / (np.pi*2)) * OUT_PHI))
-        pos_y = int(np.floor((theta / (np.pi)) * OUT_THETA))
-   
-        mag = magnitudes[i]
+        # Start the loop, which runs until no ray is active anymore
+        loop = mi.Loop("Tracing", lambda: (active, directions, origins, magnitudes,  bounce_n, max_bounce, n_too_big, n_too_small, sampler))
 
-        out_model[pos_y, pos_x] += mag / np.sin(theta)
+        while loop(active):
+            # Create the ray and intersect the scene
+            ray = mi.Ray3f(origins, directions)
+            intersection: mi.SurfaceInteraction3f = self.scene.ray_intersect(ray, active=active)
 
-    fig, ax = plt.subplots(1)
-    ax.set_xlabel("phi")
-    ax.set_ylabel("theta")
-    ax.imshow(out_model)
-    plt.show()
+            # Check if the ray is valid before any brdfs are run
+            t_too_big = mi.Mask(intersection.t > 999999999999999999)
+            t_too_small = mi.Mask(intersection.t < 0)
 
-def render_structure(fibers, brdf):
-    scene: mi.Scene = mi.load_dict(fiber.scene_dict_from_fibers(fibers))
-    sampler: mi.Sampler = mi.load_dict({'type': 'independent'})
-    seed = int(time.time())
-    sampler.seed(seed, RAY_AMT)    
-    # sampler.seed(3, RAY_AMT)    
+            active &= ~t_too_big
+            n_too_big[t_too_big] = 1
+            active &= ~t_too_small
+            n_too_small[t_too_small] = 1
 
-    directions = mi.Vector3f(1,0,0)
-    origins = mi.Point3f(-20,0,0)
-    magnitudes = mi.Float(1.)
-
-    bounce_n = mi.UInt32(0)
-    max_bounce = mi.UInt32(5)
-    active: mi.Mask = mi.Mask(True)
+            # dr.printf_async("Ori: (%f,%f,%f)\n", origins.x, origins.y, origins.z)
+            # dr.printf_async("Dir: (%f,%f,%f)\n", directions.x, directions.y, directions.z)
+            # dr.printf_async("t: %f\n\n", intersection.t)
+            
+            rand_2d = sampler.next_2d()
+            new_dir = mi.warp.square_to_uniform_sphere(rand_2d)
+            # sampler.advance()
 
 
-    loop = mi.Loop("Tracing", lambda: (active, directions, origins, magnitudes,  bounce_n, max_bounce))
+            new_ori, _, new_mag = self.brdf.brdf(intersection, new_dir, sampler, 600.)
 
-    while loop(active):
-        ray = mi.Ray3f(origins, directions)
-        intersection: mi.SurfaceInteraction3f = scene.ray_intersect(ray, active=active)
+            # Update the running variables
+            origins[active] = new_ori
+            directions[active] = new_dir
+            magnitudes[active] *= new_mag
+            bounce_n[active] += 1
 
-        # Check if the ray is valid before any brdfs are run
-        t_too_big = mi.Mask(intersection.t > 999999999)
-        t_too_small = mi.Mask(intersection.t < 0)
-        active &= ~t_too_big
-        active &= ~t_too_small
+            # Update the active mask
+            active &= bounce_n < max_bounce
+            # active &= magnitudes <= 0.00000000000000000000000001
+        print(f'\nResults:\n\nMaximum bounce depth: {dr.max(bounce_n)[0]}\nMaximum vertical offset: {dr.max(dr.abs(origins.z))[0]}\nBounce stopped because ray left the structure: {dr.sum(n_too_big)[0]}')
 
-        dr.printf_async("Ori: (%f,%f,%f)\n", origins.x, origins.y, origins.z)
-        dr.printf_async("Dir: (%f,%f,%f)\n", directions.x, directions.y, directions.z)
-        dr.printf_async("t: %f\n", intersection.t)
+        
+        out_model = dr.empty(mi.Float, self.out_size_phi * self.out_size_theta)
 
-        output: mi.Shape = intersection.shape
-        new_ori, new_dir, new_mag = brdf.brdf(intersection, active, sampler, 414.)
+        thetas, phis = mitsuba_cartesian_to_polar(directions)
 
-        origins[active] = new_ori
-        directions[active] = new_dir
-        magnitudes[active] *= new_mag
-        bounce_n[active] += 1
-        active &= bounce_n < max_bounce
-        active &= magnitudes <= 0.000001
-    print(dr.max(bounce_n))
+        x_indices = mi.UInt(dr.floor((phis / (dr.pi * 2.)) * self.out_size_phi))
+        y_indices = mi.UInt(dr.floor(((thetas + (dr.pi / 2.)) / dr.pi) * self.out_size_theta))
 
-    n_dir = directions.numpy()
-    n_mag = magnitudes.numpy()
+        out_phi_size = mi.UInt32(self.out_size_phi)
+        indices = x_indices + out_phi_size * y_indices
 
-    return (n_dir, n_mag)
+        dr.scatter_reduce(dr.ReduceOp.Add, out_model, magnitudes, indices)
+        # Return the directions and magnitudes as numpy vectors
+        n_dir = directions.numpy()
+        n_mag = magnitudes.numpy()
 
-# length = r/ (sqrt(1 - dot(out, fiber_dir)^2))
-# wenn dot nahe 1 wegwerfen
-
-# Check code where exactly it's written if it's even uniform
-# Get the test cases to work correctly
-
-TEST = False
-
-RAY_AMT = 1
-OUT_PHI = 100
-OUT_THETA = 100
-
-THETA_TABLE_SIZE=450
-PHI_TABLE_SIZE=880
-
-mi.set_variant('llvm_ad_rgb')
-
-fibers = []
-fibers.append(fiber.Fiber(0., 0., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(10., 0., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(10., 10., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(0., 10., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(10., 0., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(-10., -10., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(0., -10., 3., [0.,0.,1.]))
-# fibers.append(fiber.Fiber(-10., 0., 3., [0.,0.,1.]))
-
-# Check the interactions
-if not TEST:
-    brdf = TabulatedBCRDF(["fiber_0/fiber_0_lambda" + str(i) + "_TM_depth6.binary" for i in range(24)])
-
-    # phi = np.linspace(0.,1.,THETA_TABLE_SIZE).reshape(THETA_TABLE_SIZE,1)
-    # intensities = np.ones((THETA_TABLE_SIZE, PHI_TABLE_SIZE)) * phi
-    # intensities = np.zeros((THETA_TABLE_SIZE, PHI_TABLE_SIZE))
-    # intensities[0:50,:] = 1
-    # # intensities[100:150,:] = 1
-    # # intensities[200:250,:] = 1
-    # # intensities[300:350,:] = 1
-    # intensities[400:450,:] = 1
-
-    # intensities[:,0:50] = 1
-    # # intensities[:,100:150] = 1
-    # # intensities[:,200:250] = 1
-    # # intensities[:,300:350] = 1
-    # # intensities[:,400:450] = 1
-    # # intensities[:,500:550] = 1
-    # # intensities[:,600:650] = 1
-    # # intensities[:,700:750] = 1
-    # intensities[:,800:850] = 1
-
-    # brdf.set_test_intensities(intensities)
-    # brdf.show_layers()
-    directions, magnitudes = render_structure(fibers, brdf)
-
-    plot_results(directions, magnitudes)
-
-else:
-    rend_scene = fiber.preview_render_dict_from_fibers(fibers)
-    print(rend_scene)
-
-    img = mi.render(mi.load_dict(rend_scene))
-    plt.imshow(img)
-    plt.show()
+        return (out_model.numpy())
