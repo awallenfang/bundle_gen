@@ -32,8 +32,8 @@ def scene_dict_from_fibers(fibers: list[Fiber]) -> dict:
     return scene_dict
 
 def get_bounds(fibers: list[Fiber]):
-    center_x = statistics.mean(map(lambda f: f.pos_x, fibers))
-    center_y = statistics.mean(map(lambda f: f.pos_y, fibers))
+    center_x = (max(map(lambda f: f.pos_x, fibers)) - min(map(lambda f: f.pos_x, fibers))) / 2.
+    center_y = (max(map(lambda f: f.pos_y, fibers)) - min(map(lambda f: f.pos_y, fibers))) / 2.
     max_radius = max(map(lambda f: math.sqrt((f.pos_x - center_x)**2 + (f.pos_y - center_y) ** 2), fibers))
 
     return max_radius + fibers[0].radius, center_x, center_y

@@ -4,10 +4,10 @@ import mitsuba as mi
 import drjit as dr
 
 from fiber import scene_dict_from_fibers, get_bounds
-from util import mitsuba_cartesian_to_polar
+from util import mitsuba_cartesian_to_polar, py_cartesian_to_polar
 
 class Renderer():
-    def __init__(self, in_fibers, brdf, samples=100000, seed=-1, bounces=100, in_dir=mi.Vector3f(1.,0.,0.), in_pos=mi.Point3f(-20.,0.,0.), spread_amt=1, out_size_phi=100, out_size_theta=100):
+    def __init__(self, in_fibers, brdf, samples=100000, seed=-1, bounces=100, in_dir=mi.Vector3f(1.,0.,0.), in_pos=mi.Point3f(-20.,0.,0.), out_size_phi=100, out_size_theta=100):
         if seed == -1:
             self.seed = int(time.time())
         else: 
@@ -20,7 +20,6 @@ class Renderer():
         self.bounces = bounces
         self.origin = in_pos
         self.in_direction = in_dir
-        self.spread_amt = spread_amt
         self.out_size_phi = out_size_phi
         self.out_size_theta = out_size_theta
 
@@ -37,10 +36,9 @@ class Renderer():
 
         origins = self.origin
         
-        if self.spread_amt > 1:
-            side = dr.normalize(dr.cross(self.in_direction, up)) * self.radius
-            rand_offset = sampler.next_1d()
-            origins = dr.lerp(origins + side, origins - side,  rand_offset)
+        side = dr.normalize(dr.cross(self.in_direction, up)) * self.radius
+        rand_offset = sampler.next_1d()
+        origins = dr.lerp(origins + side, origins - side,  rand_offset)
             
 
         # Set up the running variables
@@ -53,6 +51,8 @@ class Renderer():
 
         n_too_big = mi.UInt32(0)
         n_too_small = mi.UInt32(0)
+
+        _, input_phi_rotation = mitsuba_cartesian_to_polar(directions)
 
         # Start the loop, which runs until no ray is active anymore
         loop = mi.Loop("Tracing", lambda: (active, directions, origins, magnitudes,  bounce_n, max_bounce, n_too_big, n_too_small, sampler))
@@ -80,7 +80,7 @@ class Renderer():
             # sampler.advance()
 
 
-            new_ori, _, new_mag = self.brdf.brdf(intersection, new_dir, sampler, 600.)
+            new_ori, _, new_mag = self.brdf.brdf(intersection, new_dir, sampler, 600., -input_phi_rotation)
 
             # Update the running variables
             origins[active] = new_ori
@@ -93,9 +93,13 @@ class Renderer():
             # active &= magnitudes <= 0.00000000000000000000000001
         # Filter out ones that left the structure at the top and bottom
         directions = directions[dr.abs(origins.z) < 100000000]   
-        magnitudes = magnitudes[dr.abs(origins.z) < 100000000]   
+        magnitudes = magnitudes[dr.abs(origins.z) < 100000000]  
 
-        print(f'\nResults:\n\nMaximum bounce depth: {dr.max(bounce_n)[0]}\nMaximum vertical offset: {dr.max(dr.abs(origins.z))[0]}\nAmount of rays that left the scene at the top/bottom: {dr.sum(dr.abs(origins.z) > 100000000)}\nBounce stopped because ray left the structure: {dr.sum(n_too_big)[0]}')
+        # Filter out rays that didn't hit a fiber 
+        directions = directions[bounce_n > 0]
+        magnitudes = magnitudes[bounce_n > 0]          
+
+        print(f'\nResults:\n\nMaximum bounce depth: {dr.max(bounce_n)[0]}\nMaximum vertical offset: {dr.max(dr.abs(origins.z))[0]}\nAmount of rays that left the scene at the top/bottom: {dr.sum(dr.abs(origins.z) > 100000000)}\nBounce stopped because ray left the structure: {dr.sum(n_too_big)[0]}\n\nTotal number of valid rays: {dr.sum(bounce_n > 0)}')
 
         out_model = dr.zeros(mi.Float, self.out_size_phi * self.out_size_theta)
 
@@ -106,6 +110,9 @@ class Renderer():
 
         indices = x_indices + self.out_size_phi * y_indices
 
-        dr.scatter_reduce(dr.ReduceOp.Add, out_model, magnitudes, indices)
+        valid = bounce_n > 0
+        valid &= dr.abs(origins.z) < 100000000
+
+        dr.scatter_reduce(dr.ReduceOp.Add, out_model, magnitudes, indices, active=valid)
 
         return (out_model.numpy())

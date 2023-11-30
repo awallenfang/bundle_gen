@@ -51,8 +51,10 @@ class TabulatedBCRDF():
         # wavelength 0-amount of tables, theta 0-theta_range, phi 0-phi_range
         # phi 360°
         # theta 180°
+        phi[phi<0] += dr.pi*2
+        phi[phi>dr.pi*2] -= dr.pi*2
         coord = mi.Vector3f(
-            (phi / (2*dr.pi)), 
+            ((phi) / (2*dr.pi)), 
             ((theta + dr.pi/2) / dr.pi),
             ((wavelength - self.lambda_min) / (self.lambda_max - self.lambda_min)),
             )
@@ -63,18 +65,11 @@ class TabulatedBCRDF():
         return self.tables_texture.eval(coord)[0]
 
 
-    def brdf(self, intersection: mi.SurfaceInteraction3f, direction: mi.Vector3f, sampler: mi.Sampler, wavelength: float) -> Tuple[mi.Vector3f, mi.Point3f, mi.Float]:
+    def brdf(self, intersection: mi.SurfaceInteraction3f, direction: mi.Vector3f, sampler: mi.Sampler, wavelength: float, additional_phi_rotation: mi.Float) -> Tuple[mi.Vector3f, mi.Point3f, mi.Float]:
         # Uniform sphere point
 
         rand_1 = sampler.next_1d()
         rand_2 = sampler.next_1d()
-
-        # rand_2d = sampler.next_2d()
-        # direction = mi.warp.square_to_uniform_sphere(rand_2d)
-
-        # dr.printf_async("rand_phi: %f\n", rand_phi)
-        
-        # local_direction = intersection.to_local(direction)
 
         # position is already returned in world coordinates
         position = intersection.shape.get_out_pos(intersection, 0.01, direction)
@@ -83,8 +78,7 @@ class TabulatedBCRDF():
         out_theta, out_phi = mitsuba_cartesian_to_polar(direction)
         # dr.printf_async("Ori: (%f,%f,%f)\n", position.x, position.y, position.z)
         # dr.printf_async("Local Dir: (%f,%f,%f)\n", local_direction.x, local_direction.y, local_direction.z)
-
-        magnitude = self.interpolate_tables(wavelength, out_theta, out_phi)
+        magnitude = self.interpolate_tables(wavelength, out_theta, out_phi - additional_phi_rotation)
         # dr.printf_async("Mag: %f \n", magnitude)
         # Shift the position along the side vector of the fiber
         # side = dr.cross(direction, fiber_dir)
