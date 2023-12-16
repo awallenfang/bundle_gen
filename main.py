@@ -33,8 +33,10 @@ plt.scatter(samples[:,0], samples[:,1])
 plt.show()
 
 fibers = []
-for elem in samples:
-    fibers.append(fiber.Fiber(elem[0], elem[1], FIBER_RADIUS, [0.,0.,1.]))
+fibers.append(fiber.Fiber(0.,0.,2., [0.,0.,1.]))
+fibers.append(fiber.Fiber(0.,5.,2., [0.,0.,1.]))
+# for elem in samples:
+    # fibers.append(fiber.Fiber(elem[0], elem[1], FIBER_RADIUS, [0.,0.,1.]))
 
 
 radius, center_x, center_y = fiber.get_bounds(fibers)
@@ -67,7 +69,7 @@ if not TEST:
     # brdf.set_test_intensities(intensities)
     # brdf.show_layers()
 
-    in_dir = mi.Vector3f(1.,1.,0.)
+    in_dir = mi.Vector3f(1.,0.,0.)
 
     in_pos = mi.Point3f(center_x, center_y, 0.) - dr.normalize(in_dir) * (radius * 1.1)
 
