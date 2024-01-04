@@ -39,7 +39,7 @@ class TabulatedBCRDF():
 
             # intensities = np.ones(intensities.shape)
             self.tables.append(intensities)
-
+        self.show_single_layer(16)
         numpy_tables = np.stack(self.tables, axis=0)[:,:,:,None]
         print(f'Total Sum: {np.sum(numpy_tables)}')
 
@@ -101,4 +101,23 @@ class TabulatedBCRDF():
         fig, ax = plt.subplots(self.layers//4, 4)
         for (n, img) in enumerate(self.tables):
             ax[n//4, n%4].imshow(img)
+        plt.show()
+
+    def show_single_layer(self, layer):
+        fig, ax = plt.subplots(1)
+        fig.set_figheight(10)
+        fig.set_figwidth(10)
+        ax.set_xlabel("phi")
+        ax.set_ylabel("theta")
+
+        theta_labels = np.array([90, 45, 0, -45, -90])
+        theta_tick_positions = np.arange(0,self.theta_range+1, (self.theta_range+1) // 4)
+        ax.set_yticks(theta_tick_positions, theta_labels)
+
+        phi_labels = np.array([-180, -90, 0, 90, 180])
+        phi_tick_positions = np.arange(0,self.phi_range+1, (self.phi_range+1) // 4)
+        ax.set_xticks(phi_tick_positions, phi_labels)
+
+
+        ax.imshow(self.tables[layer][:,::2])
         plt.show()
