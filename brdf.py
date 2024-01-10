@@ -44,18 +44,21 @@ class TabulatedBCRDF():
         print(f'Total Sum: {np.sum(numpy_tables)}')
 
         self.tables_tensor = mi.TensorXf(numpy_tables)
-        # shape: (wavelength, theta, phi, 1)
-        self.tables_texture = mi.Texture3f(self.tables_tensor)
+        print(self.tables_tensor)
+        # shape: (wavelength, theta_o, phi_o, 1)
+        # TODO: shape: (wavelength, theta_o, phi_o, theta_i, phi_i, 1)
+        self.tables_texture = mi.Texture3f(self.tables_tensor, filter_mode=dr.FilterMode.Nearest)
+        mi.Texture
 
-    def interpolate_tables(self, wavelength: mi.Float, theta: mi.Float, phi: mi.Float) -> mi.Float:
+    def interpolate_tables(self, wavelength: mi.Float, out_theta: mi.Float, out_phi: mi.Float) -> mi.Float:
         # wavelength 0-amount of tables, theta 0-theta_range, phi 0-phi_range
         # phi 360°
         # theta 180°
-        phi[phi<0] += dr.pi*2
-        phi[phi>dr.pi*2] -= dr.pi*2
+        out_phi[out_phi<0] += dr.pi*2
+        out_phi[out_phi>dr.pi*2] -= dr.pi*2
         coord = mi.Vector3f(
-            ((phi) / (2*dr.pi)), 
-            ((theta + dr.pi/2) / dr.pi),
+            (out_phi / (2*dr.pi)), 
+            ((out_theta + dr.pi/2) / dr.pi),
             ((wavelength - self.lambda_min) / (self.lambda_max - self.lambda_min)),
             )
 
@@ -63,6 +66,45 @@ class TabulatedBCRDF():
         # dr.printf_async("phi: %f -> coord_phi: %f\n", phi, coord.x)
         # dr.printf_async("coord: (%f,%f,%f)\n", coord.x, coord.y, coord.z)
         return self.tables_texture.eval(coord)[0]
+    
+    def interpolate_tables_new(self, wavelength: mi.Float, out_theta: mi.Float, out_phi: mi.Float, in_theta: mi.Float, in_phi: mi.Float) -> mi.Float:
+        # wavelength 0-amount of tables, theta 0-theta_range, phi 0-phi_range
+        # phi 360°
+        # theta 180°
+        out_phi[out_phi<0] += dr.pi*2
+        out_phi[out_phi>dr.pi*2] -= dr.pi*2
+        # coord = mi.Vector3f(
+        #     (out_phi / (2*dr.pi)), 
+        #     ((out_theta + dr.pi/2) / dr.pi),
+        #     ((wavelength - self.lambda_min) / (self.lambda_max - self.lambda_min)),
+        #     )
+
+        # Get the nearest neighbour position in the tensor
+        wavelength_coord = mi.UInt((wavelength - self.lambda_min) / (self.lambda_max - self.lambda_min) * self.layers)
+        theta_o_coord = mi.UInt((out_theta + dr.pi/2) / dr.pi * self.theta_range)
+        phi_o_coord = mi.UInt((out_phi / (2*dr.pi)) * self.phi_range)
+        theta_i_coord = dr.uint32_array_t((in_theta + dr.pi/2) / dr.pi * self.theta_range)
+        phi_i_coord = dr.uint32_array_t((in_phi / (2*dr.pi)) * self.phi_range)
+        # wavelength_coord = ((wavelength - self.lambda_min) / (self.lambda_max - self.lambda_min))
+        # theta_o_coord = ((out_theta + dr.pi/2) / dr.pi)
+        # phi_o_coord = (out_phi / (2*dr.pi))
+        # theta_i_coord = ((in_theta + dr.pi/2) / dr.pi)
+        # phi_i_coord = (in_phi / (2*dr.pi))
+        # #(wavelength, theta_o, phi_o, theta_i, phi_i, 1)
+        print(wavelength_coord, theta_o_coord, phi_o_coord, theta_i_coord, phi_i_coord)
+
+        # TODO: Maybe something better than nearest neighbour interpolation
+
+        
+        # dr.printf_async("phi: %f -> coord_phi: %f\n", phi, coord.x)
+        # dr.printf_async("coord: (%f,%f,%f)\n", coord.x, coord.y, coord.z)
+        # return self.tables_texture.eval(coord)[0]
+        # array = 
+        # array = array.array
+        # print(type(array))
+        # return dr.gather(mi.Float, self.tables_tensor.array[wavelength_coord][theta_o_coord], phi_o_coord)
+        print(type(self.tables_tensor.array))
+        return self.tables_tensor[wavelength_coord][theta_o_coord][phi_o_coord].array
 
 
     def brdf(self, intersection: mi.SurfaceInteraction3f, direction: mi.Vector3f, sampler: mi.Sampler, wavelength: float, additional_phi_rotation: mi.Float) -> Tuple[mi.Vector3f, mi.Point3f, mi.Float]:
@@ -78,7 +120,7 @@ class TabulatedBCRDF():
         out_theta, out_phi = mitsuba_cartesian_to_polar(direction)
         # dr.printf_async("Ori: (%f,%f,%f)\n", position.x, position.y, position.z)
         # dr.printf_async("Local Dir: (%f,%f,%f)\n", local_direction.x, local_direction.y, local_direction.z)
-        magnitude = self.interpolate_tables(wavelength, out_theta, out_phi - additional_phi_rotation)
+        magnitude = self.interpolate_tables_new(wavelength, out_theta, out_phi - additional_phi_rotation, mi.Float(0.), mi.Float(0.))
         # dr.printf_async("Mag: %f \n", magnitude)
         # Shift the position along the side vector of the fiber
         # side = dr.cross(direction, fiber_dir)
@@ -121,3 +163,7 @@ class TabulatedBCRDF():
 
         ax.imshow(self.tables[layer][:,::2])
         plt.show()
+
+brdf = TabulatedBCRDF(["fiber_0/fiber_0_lambda" + str(i) + "_TM_depth6.binary" for i in range(24)])
+print(brdf.interpolate_tables(mi.Float(600.), mi.Float(0.), mi.Float(0.)))
+print(brdf.interpolate_tables_new(mi.Float(600.), mi.Float(0.), mi.Float(0.), mi.Float(0.), mi.Float(0.)))

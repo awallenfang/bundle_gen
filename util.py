@@ -42,13 +42,13 @@ def plot_results(out_model:np.array, out_theta = 100, out_phi = 100):
     ax.set_xlabel("phi")
     ax.set_ylabel("theta")
 
-    theta_labels = np.array([90, 45, 0, -45, -90])
-    theta_tick_positions = np.arange(0,out_theta+1, (out_theta+1) // 4)
-    ax.set_yticks(theta_tick_positions, theta_labels)
+    # theta_labels = np.array([90, 45, 0, -45, -90])
+    # theta_tick_positions = np.arange(0,out_theta+1, (out_theta+1) // 4)
+    # ax.set_yticks(theta_tick_positions, theta_labels)
 
-    phi_labels = np.array([-180, -90, 0, 90, 180])
-    phi_tick_positions = np.arange(0,out_phi+1, (out_phi+1) // 4)
-    ax.set_xticks(phi_tick_positions, phi_labels)
+    # phi_labels = np.array([-180, -90, 0, 90, 180])
+    # phi_tick_positions = np.arange(0,out_phi+1, (out_phi+1) // 4)
+    # ax.set_xticks(phi_tick_positions, phi_labels)
 
 
     ax.imshow(out_model)

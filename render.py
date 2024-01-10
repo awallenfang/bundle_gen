@@ -7,7 +7,7 @@ from fiber import scene_dict_from_fibers, get_bounds
 from util import mitsuba_cartesian_to_polar, py_cartesian_to_polar
 
 class Renderer():
-    def __init__(self, in_fibers, brdf, samples=100000, seed=-1, bounces=100, in_dir=mi.Vector3f(1.,0.,0.), in_pos=mi.Point3f(-20.,0.,0.), out_size_phi=100, out_size_theta=100):
+    def __init__(self, in_fibers, brdf, samples=100000, seed=-1, bounces=100, in_dir=mi.Vector3f(1.,0.,0.), in_pos=mi.Point3f(-20.,0.,0.), out_size_phi=100, out_size_theta=100, wavelength=600.):
         if seed == -1:
             self.seed = int(time.time())
         else: 
@@ -22,6 +22,7 @@ class Renderer():
         self.in_direction = in_dir
         self.out_size_phi = out_size_phi
         self.out_size_theta = out_size_theta
+        self.wavelength = mi.Float(wavelength)
 
     def render_structure(self):
         """
@@ -79,8 +80,7 @@ class Renderer():
             new_dir = mi.warp.square_to_uniform_sphere(rand_2d)
             # sampler.advance()
 
-
-            new_ori, _, new_mag = self.brdf.brdf(intersection, new_dir, sampler, 600., -input_phi_rotation)
+            new_ori, _, new_mag = self.brdf.brdf(intersection, new_dir, sampler, self.wavelength, -input_phi_rotation)
 
             # Update the running variables
             origins[active] = new_ori
