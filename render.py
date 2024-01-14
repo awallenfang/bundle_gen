@@ -80,7 +80,7 @@ class Renderer():
             new_dir = mi.warp.square_to_uniform_sphere(rand_2d)
             # sampler.advance()
 
-            new_ori, _, new_mag = self.brdf.brdf(intersection, new_dir, sampler, self.wavelength, -input_phi_rotation)
+            new_ori, _, new_mag = self.brdf.brdf(intersection, new_dir, directions, sampler, self.wavelength, -input_phi_rotation)
 
             # Update the running variables
             origins[active] = new_ori
@@ -112,7 +112,15 @@ class Renderer():
 
         valid = bounce_n > 0
         valid &= dr.abs(origins.z) < 100000000
+        print("Test")
+
+        # indices[indices >= self.out_size_theta * self.out_size_phi] = self.out_size_theta * self.out_size_phi - 1
+        # indices = dr.zeros(mi.UInt, indices.size())
+
+        # print(len(magnitudes))
+        # print(len(indices))
+        # print(len(valid))
 
         dr.scatter_reduce(dr.ReduceOp.Add, out_model, magnitudes, indices, active=valid)
-
+        print(out_model.numpy())
         return (out_model.numpy())

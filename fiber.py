@@ -1,6 +1,8 @@
 import math, statistics
 
 import mitsuba as mi
+import scipy.stats.qmc as qmc
+import numpy as np
 
 class Fiber():
     def __init__(self, pos_x: float, pos_y: float, radius: float, direction: list[float]):
@@ -92,3 +94,20 @@ def preview_render_dict_from_fibers(fibers: list[Fiber]) -> dict:
 
         scene_dict["fiber_" + str(n)] = fiber_dict
     return scene_dict
+
+def generate_random(fiber_radius, bundle_radius) -> list[Fiber]:
+    poisson_engine = qmc.PoissonDisk(d=2, radius=(2.*fiber_radius)/bundle_radius)
+    samples = poisson_engine.random(1000000)
+    samples -= 0.5
+    samples *= 2.*bundle_radius
+    samples = samples[np.sqrt(samples[:,0]*samples[:,0] + samples[:,1] * samples[:,1]) <= bundle_radius]
+
+    fibers = []
+    for elem in samples:
+        fibers.append(Fiber(elem[0], elem[1], fiber_radius, [0.,0.,1.]))
+    return fibers
+
+def generate_single(radius) -> list[Fiber]:
+    fibers = []
+    fibers.append(Fiber(0.,0.,radius, [0.,0.,1.]))
+    return fibers
