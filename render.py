@@ -71,16 +71,11 @@ class Renderer():
             n_too_big[t_too_big] = 1
             active &= ~t_too_small
             n_too_small[t_too_small] = 1
-
-            # dr.printf_async("Ori: (%f,%f,%f)\n", origins.x, origins.y, origins.z)
-            # dr.printf_async("Dir: (%f,%f,%f)\n", directions.x, directions.y, directions.z)
-            # dr.printf_async("t: %f\n\n", intersection.t)
             
             rand_2d = sampler.next_2d()
             new_dir = mi.warp.square_to_uniform_sphere(rand_2d)
-            # sampler.advance()
 
-            new_ori, _, new_mag = self.brdf.brdf(intersection, new_dir, directions, sampler, self.wavelength, -input_phi_rotation)
+            new_ori, new_mag = self.brdf.brdf(intersection, new_dir, directions, sampler, -input_phi_rotation)
 
             # Update the running variables
             origins[active] = new_ori
@@ -112,15 +107,8 @@ class Renderer():
 
         valid = bounce_n > 0
         valid &= dr.abs(origins.z) < 100000000
-        print("Test")
 
-        # indices[indices >= self.out_size_theta * self.out_size_phi] = self.out_size_theta * self.out_size_phi - 1
-        # indices = dr.zeros(mi.UInt, indices.size())
-
-        # print(len(magnitudes))
-        # print(len(indices))
-        # print(len(valid))
 
         dr.scatter_reduce(dr.ReduceOp.Add, out_model, magnitudes, indices, active=valid)
-        print(out_model.numpy())
+
         return (out_model.numpy())

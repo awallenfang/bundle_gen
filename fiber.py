@@ -3,6 +3,7 @@ import math, statistics
 import mitsuba as mi
 import scipy.stats.qmc as qmc
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Fiber():
     def __init__(self, pos_x: float, pos_y: float, radius: float, direction: list[float]):
@@ -95,7 +96,7 @@ def preview_render_dict_from_fibers(fibers: list[Fiber]) -> dict:
         scene_dict["fiber_" + str(n)] = fiber_dict
     return scene_dict
 
-def generate_random(fiber_radius, bundle_radius) -> list[Fiber]:
+def generate_random(fiber_radius, bundle_radius, show_structure: bool = False) -> list[Fiber]:
     poisson_engine = qmc.PoissonDisk(d=2, radius=(2.*fiber_radius)/bundle_radius)
     samples = poisson_engine.random(1000000)
     samples -= 0.5
@@ -105,6 +106,10 @@ def generate_random(fiber_radius, bundle_radius) -> list[Fiber]:
     fibers = []
     for elem in samples:
         fibers.append(Fiber(elem[0], elem[1], fiber_radius, [0.,0.,1.]))
+
+    if show_structure:
+        plt.scatter(samples[:,0], samples[:,1])
+        plt.show()
     return fibers
 
 def generate_single(radius) -> list[Fiber]:

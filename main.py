@@ -17,7 +17,7 @@ THETA_TABLE_SIZE=450
 PHI_TABLE_SIZE=880
 
 FIBER_RADIUS = 20.
-BUNDLE_RADIUS = 5000.
+BUNDLE_RADIUS = 500.
 
 mi.set_variant('llvm_ad_rgb')
 
@@ -25,7 +25,7 @@ fibers = []
 
 # fibers = fiber.generate_single(2.)
 
-fibers = fiber.generate_random(FIBER_RADIUS, BUNDLE_RADIUS)
+fibers = fiber.generate_random(FIBER_RADIUS, BUNDLE_RADIUS, show_structure=True)
 
 radius, center_x, center_y = fiber.get_bounds(fibers)
 
@@ -44,6 +44,6 @@ for w in range(25):
     plot_results(out_model, out_theta=200, out_phi=200)
 
     # write to the file with the name date_time_depth_samples_in_dir
-    np.save("test_" + str(int(time.time())) + "_" + str(bounces) + "_" + str(samples) + "_" + str(print_in_dir[0,0]) + "_" + str(print_in_dir[0,1]) + "_" + str(print_in_dir[0,2]), out_model)
+    np.save("output_" + str(int(time.time())) + "_" + str(bounces) + "_" + str(samples) + "_" + str(print_in_dir[0,0]) + "_" + str(print_in_dir[0,1]) + "_" + str(print_in_dir[0,2]), out_model)
 
 exit()
