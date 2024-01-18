@@ -42,11 +42,13 @@ class TabulatedBCRDF():
                     intensities = np.fromfile(filename, dtype="float32")
                     intensities = intensities.reshape(self.shape_theta, self.shape_phi)
                     intensities /= np.sum(intensities)
+                    
 
                     self.tables[theta_num] = intensities
 
         
-
+        # plt.imshow(self.tables[10])
+        # plt.show()
         self.tables_tensor = mi.TensorXf(self.tables[:,:,:,None])
         # shape: (theta_i, theta_o, phi_o, 1)
 

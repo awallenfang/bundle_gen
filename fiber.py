@@ -96,8 +96,8 @@ def preview_render_dict_from_fibers(fibers: list[Fiber]) -> dict:
         scene_dict["fiber_" + str(n)] = fiber_dict
     return scene_dict
 
-def generate_random(fiber_radius, bundle_radius, show_structure: bool = False) -> list[Fiber]:
-    poisson_engine = qmc.PoissonDisk(d=2, radius=(2.*fiber_radius)/bundle_radius)
+def generate_random(fiber_radius, bundle_radius, show_structure: bool = False, seed=1) -> list[Fiber]:
+    poisson_engine = qmc.PoissonDisk(d=2, radius=(2.*fiber_radius)/bundle_radius, seed=seed)
     samples = poisson_engine.random(1000000)
     samples -= 0.5
     samples *= 2.*bundle_radius

@@ -111,4 +111,7 @@ class Renderer():
 
         dr.scatter_reduce(dr.ReduceOp.Add, out_model, magnitudes, indices, active=valid)
 
+        # Reshape the out_model
+        out_model_np = out_model.numpy().reshape(self.out_size_theta, self.out_size_phi)
+
         return (out_model.numpy())
