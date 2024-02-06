@@ -92,14 +92,14 @@ def get_combined_color_single_theta(theta_i):
 
 
 
-plt.imshow(get_combined_color_single_theta(2))
+plt.imshow(get_combined_color_single_theta(2) * 3.)
 plt.show()
 
 fig, axs = plt.subplots(3, 6, figsize=(12, 6))
 fig.tight_layout(pad=3.0)
 
 for theta_i in range(18):
-    axs[theta_i // 6, theta_i % 6].imshow(get_combined_color_single_theta(theta_i))
+    axs[theta_i // 6, theta_i % 6].imshow(get_combined_color_single_theta(theta_i) * 3.)
     axs[theta_i // 6, theta_i % 6].set_title(f"theta_i={theta_i}")
 
 plt.show()
