@@ -2,6 +2,7 @@ import time
 
 import mitsuba as mi
 import drjit as dr
+import numpy as np
 
 from fiber import scene_dict_from_fibers, get_bounds
 from util import mitsuba_cartesian_to_polar, py_cartesian_to_polar
@@ -24,7 +25,7 @@ class Renderer():
         self.out_size_theta = out_size_theta
         self.wavelength = mi.Float(wavelength)
 
-    def render_structure(self):
+    def render_structure(self) -> tuple[np.array, float]:
         """
         Render the fiber structure that was set up
         """
@@ -114,4 +115,6 @@ class Renderer():
         # Reshape the out_model
         out_model_np = out_model.numpy().reshape(self.out_size_theta, self.out_size_phi)
 
-        return (out_model.numpy())
+        interaction_chance = dr.sum(bounce_n > 0) / self.ray_amt
+
+        return (out_model.numpy().reshape(self.out_size_theta, self.out_size_phi), interaction_chance)

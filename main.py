@@ -24,8 +24,15 @@ def degree_to_arc(degree: float) -> float:
 
 TEST = True
 
-THETA_TABLE_SIZE=450
-PHI_TABLE_SIZE=880
+IN_THETA_TABLE_SIZE=450
+IN_PHI_TABLE_SIZE=880
+IN_WAVELENGTH_AMT=25
+
+OUT_THETA_0_TABLE_SIZE=200
+OUT_PHI_O_TABLE_SIZE=200
+OUT_WAVELENGTH_AMT=25
+OUT_THETA_I_STEPSIZE=10
+
 
 FIBER_RADIUS = 20.
 BUNDLE_RADIUS = 500.
@@ -41,10 +48,12 @@ fibers = fiber.generate_random(FIBER_RADIUS, BUNDLE_RADIUS, show_structure=True)
 
 radius, center_x, center_y = fiber.get_bounds(fibers)
 
-for theta in range(0, 180, 10):
-    phi = 0.
+interaction_chances = np.zeros((18, 1, 25))
+
+for theta in range(0, 190, 10):
+    phi = 0
     phi_deg = 0.
-    theta_deg = degree_to_arc(theta)
+    theta_deg = degree_to_arc(theta - 90)
     # Create the folder output/theta-{theta}-phi-{phi} if it doesn't exist yet
     if not os.path.exists("output/theta-" + str(int(theta)) + "-phi-" + str(int(phi))):
         os.makedirs("output/theta-" + str(int(theta)) + "-phi-" + str(int(phi)))
@@ -57,10 +66,11 @@ for theta in range(0, 180, 10):
         print_in_dir = in_dir.numpy()
         bounces = 100000
         samples = 1000000
-        renderer = Renderer(fibers, brdf, samples=samples, bounces=bounces, in_dir=in_dir, in_pos=in_pos,out_size_phi=200, out_size_theta=200)
+        renderer = Renderer(fibers, brdf, samples=samples, bounces=bounces, in_dir=in_dir, in_pos=in_pos,out_size_phi=OUT_PHI_O_TABLE_SIZE, out_size_theta=OUT_THETA_0_TABLE_SIZE)
 
-        out_model: np.array = renderer.render_structure()
+        out_model, interaction_chance  = renderer.render_structure()
         # plot_results(out_model, out_theta=200, out_phi=200)
+        interaction_chances[theta//10, phi, w] = interaction_chance
 
         file_name = "lambda_" + str(w) + "_intensities"
         # write to the file with the name date_time_depth_samples_in_dir
@@ -70,3 +80,6 @@ for theta in range(0, 180, 10):
         os.rename(file_name + ".npy", "output/theta-" + str(int(theta)) + "-phi-" + str(int(phi)) + "/" + file_name + ".npy")
 
 
+print(interaction_chances)
+np.save("interaction_chances.npy", interaction_chances)
+os.rename("interaction_chances.npy", "output/interaction_chances.npy")
