@@ -112,6 +112,24 @@ def generate_random(fiber_radius, bundle_radius, show_structure: bool = False, s
         plt.show()
     return fibers
 
+def generate_random_ellipsis(fiber_radius, bundle_radius, show_structure: bool = False, seed=1) -> list[Fiber]:
+    poisson_engine = qmc.PoissonDisk(d=2, radius=(2.*fiber_radius)/bundle_radius, seed=seed)
+    samples = poisson_engine.random(1000000)
+    samples -= 0.5
+    samples *= 2.*bundle_radius
+    samples = samples[np.sqrt(samples[:,0]*samples[:,0] + samples[:,1] * samples[:,1]*5.) <= bundle_radius]
+
+    fibers = []
+    for elem in samples:
+        fibers.append(Fiber(elem[0], elem[1], fiber_radius, [0.,0.,1.]))
+
+    if show_structure:
+        plt.scatter(samples[:,0], samples[:,1])
+        plt.xlim(-bundle_radius, bundle_radius)
+        plt.ylim(-bundle_radius, bundle_radius)
+        plt.show()
+    return fibers
+
 def generate_single(radius) -> list[Fiber]:
     fibers = []
     fibers.append(Fiber(0.,0.,radius, [0.,0.,1.]))

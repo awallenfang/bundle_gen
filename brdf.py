@@ -81,7 +81,7 @@ class TabulatedBCRDF():
 
         in_theta, _ = mitsuba_cartesian_to_polar(old_direction)
 
-        magnitude = self.interpolate_tables(in_theta, out_theta, out_phi - additional_phi_rotation)
+        magnitude = self.interpolate_tables(in_theta, out_theta, out_phi - additional_phi_rotation) * dr.abs(dr.dot(new_direction, intersection.n))
 
         return (position,  magnitude)
     
