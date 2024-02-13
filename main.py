@@ -8,6 +8,7 @@ import drjit as dr
 import scipy.stats.qmc as qmc
 
 import fiber
+import test
 from brdf import TabulatedBCRDF
 from util import plot_results
 from render import Renderer
@@ -42,7 +43,7 @@ mi.set_variant('llvm_ad_rgb')
 
 fibers = []
 
-# fibers = fiber.generate_single(2.)
+fibers = fiber.generate_single(2.)
 # fibers.append(fiber.Fiber(0., 0., 2., [1., 0., 0.]))
 # fibers.append(fiber.Fiber(0, 2.5, 2., [1., 0., 0.]))
 # fibers.append(fiber.Fiber(0., 5., 2., [1., 0., 0.]))
@@ -52,7 +53,7 @@ fibers = []
 # fibers.append(fiber.Fiber(0., 15., 2., [1., 0., 0.]))
 
 # fibers = fiber.generate_random(FIBER_RADIUS, BUNDLE_RADIUS, show_structure=True)
-fibers = fiber.generate_random_ellipsis(FIBER_RADIUS, BUNDLE_RADIUS, show_structure=True)
+# fibers = fiber.generate_random_ellipsis(FIBER_RADIUS, BUNDLE_RADIUS, show_structure=True)
 
 radius, center_x, center_y = fiber.get_bounds(fibers)
 
@@ -61,6 +62,8 @@ interaction_chances = np.zeros((36, 1, 25))
 
 for phi in range(30, 365, 30):
     for theta in range(0, 185, 30):
+        phi = 0
+        theta = 90
         phi_deg = degree_to_arc(phi)
 
         theta_deg = degree_to_arc(theta - 90)
@@ -70,6 +73,8 @@ for phi in range(30, 365, 30):
         
         for w in range(25):
             brdf = TabulatedBCRDF("./fiber_model", w)
+            # brdf.set_test_intensities(test.test_intensity_grid(450, 880))
+            brdf.set_test_intensities(test.test_intensity_gradiant_theta(450, 880))
             in_dir = input_dir_from_theta_phi(theta_deg,phi_deg)
 
             in_pos = mi.Point3f(center_x, center_y, 0.) - dr.normalize(in_dir) * (radius * 1.1)
@@ -91,6 +96,8 @@ for phi in range(30, 365, 30):
             # Move the file into the correct folder
             print("output/theta-" + str(int(theta)) + "-phi-" + str(int(phi)) + "/" + file_name + ".npy")
             os.rename(file_name + ".npy", "output/theta-" + str(int(theta)) + "-phi-" + str(int(phi)) + "/" + file_name + ".npy")
+
+            exit()
 
 
 print(interaction_chances)

@@ -115,6 +115,11 @@ class Renderer():
         # Reshape the out_model
         out_model_np = out_model.numpy().reshape(self.out_size_theta, self.out_size_phi)
 
+        for j in range(self.out_size_theta):
+            if j == 0 or j == self.out_size_theta - 1:
+                continue
+            out_model_np[j,:] /= dr.sin((dr.pi / self.out_size_theta) * j)
+
         interaction_chance = dr.sum(bounce_n > 0) / self.ray_amt
 
         return (out_model.numpy().reshape(self.out_size_theta, self.out_size_phi), interaction_chance)

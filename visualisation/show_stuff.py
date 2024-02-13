@@ -90,7 +90,9 @@ def print_output_example_single_wavelength(lambda_num):
 
 def get_output_colour_single_wavelength_single_theta(lambda_num, theta_i):
     theta = theta_i * 30
-    theta_i_table = np.load(f"./elliptic_output/theta-{theta}-phi-0/lambda_{lambda_num}_intensities.npy")
+    theta_i_table = np.load(f"./output/theta-{theta}-phi-0/lambda_{lambda_num}_intensities.npy")
+    # print(theta_i_table)
+    # print(np.max(theta_i_table))
     # theta = theta_i * 15
     # theta_i_table = np.fromfile(f"./fiber_model/theta-{theta}-phi-0/fiber_0_lambda{lambda_num}_TM_depth6.binary", dtype="float32")
     # theta_i_table = theta_i_table.reshape(450,880)
@@ -109,8 +111,8 @@ def get_combined_color_single_theta(theta_i):
     combined_color = np.zeros((200,200,3))
     # combined_color = np.zeros((450,880,3))
     for lambda_num in range(25):
-        combined_color += get_output_colour_single_wavelength_single_theta(lambda_num, theta_i) / 25.
-    return combined_color
+        combined_color += get_output_colour_single_wavelength_single_theta(lambda_num, theta_i)
+    return combined_color / 25
 def get_combined_color_single_theta_ell(theta_i):
     combined_color = np.zeros((200,200,3))
     # combined_color = np.zeros((450,880,3))
@@ -151,30 +153,35 @@ def get_combined_color_single_theta_ell(theta_i):
 # plt.show()
 
 
-fig, ax = plt.subplots(1,2, figsize=(12, 6))
-ax[0].set_xlabel(r"$\varphi_o$")
-ax[0].set_ylabel(r"$\theta_o$")
-ax[1].set_xlabel(r"$\varphi_o$")
-ax[1].set_ylabel(r"$\theta_o$")
+# fig, ax = plt.subplots(1)
+# # fig, ax = plt.subplots(1,2, figsize=(12, 6))
+# ax.set_xlabel(r"$\varphi_o$")
+# ax.set_ylabel(r"$\theta_o$")
+# # ax[1].set_xlabel(r"$\varphi_o$")
+# # ax[1].set_ylabel(r"$\theta_o$")
 
-theta_labels = np.array([90, 45, 0, -45, -90])
-# theta_tick_positions = np.arange(0,450+1, (450+1) // 4)
-theta_tick_positions = np.arange(0,200+1, (200+1) // 4)
-ax[0].set_yticks(theta_tick_positions, theta_labels)
-ax[1].set_yticks(theta_tick_positions, theta_labels)
+# theta_labels = np.array([90, 45, 0, -45, -90])
+# # theta_tick_positions = np.arange(0,450+1, (450+1) // 4)
+# theta_tick_positions = np.arange(0,200+1, (200+1) // 4)
+# ax.set_yticks(theta_tick_positions, theta_labels)
+# # ax[1].set_yticks(theta_tick_positions, theta_labels)
 
-phi_labels = np.array([-180, -90, 0, 90, 180])
-# phi_tick_positions = np.arange(0,440+1, (440+1) // 4)
-phi_tick_positions = np.arange(0,200+1, (200+1) // 4)
-ax[0].set_xticks(phi_tick_positions, phi_labels)
-ax[1].set_xticks(phi_tick_positions, phi_labels)
+# phi_labels = np.array([-180, -90, 0, 90, 180])
+# # phi_tick_positions = np.arange(0,440+1, (440+1) // 4)
+# phi_tick_positions = np.arange(0,200+1, (200+1) // 4)
+# ax.set_xticks(phi_tick_positions, phi_labels)
+# # ax[1].set_xticks(phi_tick_positions, phi_labels)
 
-ax[0].imshow(get_combined_color_single_theta(2) * 3.)
-ax[1].imshow(np.roll(get_combined_color_single_theta_ell(2) * 3., 50, axis=1))
+# ax.imshow(get_combined_color_single_theta(3) * 3.)
+# # ax[1].imshow(np.roll(get_combined_color_single_theta_ell(2) * 3., 50, axis=1))
 
-plt.savefig('filename.png', dpi=500)
+# plt.savefig('filename.png', dpi=500)
+# plt.show()
 
-
+plt.show()
+theta_i_table = np.load(f"./output/theta-90-phi-0/lambda_0_intensities.npy")
+# img = get_output_colour_single_wavelength_single_theta(0, 3)
+plt.imshow(theta_i_table)
 plt.show()
 
 # chances = np.load("output/interaction_chances.npy")
