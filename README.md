@@ -47,3 +47,7 @@ Finally the code can be run by simply running `main.py`
 ```py
 python main.py
 ```
+
+## Results
+
+The results and inner workings of the code are also described in my thesis that can be found in this repository: [Computation of BCSDFs for elliptical multi-fiber bundles](Computation_of_BCSDFs_for_elliptical_multi-fiber_bundles.pdf)
