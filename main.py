@@ -40,7 +40,7 @@ BUNDLE_RADIUS = 1000.
 
 mi.set_variant('llvm_ad_rgb')
 
-
+# Build the fiber structure into the fibers list
 fibers = []
 
 fibers = fiber.generate_single(2.)
@@ -100,6 +100,5 @@ for phi in range(30, 365, 30):
             exit()
 
 
-print(interaction_chances)
 np.save("interaction_chances.npy", interaction_chances)
 os.rename("interaction_chances.npy", "output/interaction_chances.npy")
