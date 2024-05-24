@@ -2,6 +2,8 @@
 
 A framework for generating wavelength light scattering tables of bundles of fibers based on singular fiber tables.
 
+This was created as part of my bachelor thesis on light scattering in fibers.
+
 ## Description
 
 Essentially this framework traces rays through a bundle structure and aggregates the resulting data into a new table.
